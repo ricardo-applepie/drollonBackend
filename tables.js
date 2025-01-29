@@ -779,21 +779,4 @@ const sequelize = require('./sequelize'); // Ensure the path is correct
 
   
 
-
-
-
-// Sync the models with the database
-const syncModels = async () => {
-  try {
-    await sequelize.sync({ alter: true });  // { alter: true } ensures the table is modified if needed
-    console.log('Models have been created and synced (if they did not exist).');
-  } catch (error) {
-    console.error('Error syncing models:', error);
-  } finally {
-    // Optionally close the connection after sync
-    // await sequelize.close();
-  }
-};
-
-
-module.exports = { syncModels, Board, Group, Item, User };
+module.exports = { sequelize , Board, Group, Item, User };

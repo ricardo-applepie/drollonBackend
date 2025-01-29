@@ -1,13 +1,15 @@
-// sequelize.js
+require('dotenv').config();
 const { Sequelize } = require('sequelize');  // Ensure Sequelize is imported
 
-const environment = 'development'; // Change this if using a different environment
+const isDevelopment = process.env.NODE_ENV === 'development'; // Change this if using a different environment
 
 
-const sequelize = new Sequelize(`postgresql://neondb_owner:HIFuL4jt0pvG@ep-tiny-base-a5rexjlz.us-east-2.aws.neon.tech/neondb?sslmode=require
-`, {
-  dialect: dbConfig.dialect,
-});
+// const sequelize = new Sequelize(process.env.PGDATABASE, process.env.PGUSER, process.env.PGPASSWORD, {
+//   host: process.env.HOST,
+//   dialect: process.env.DIALECT || 'postgres'
+// });
+
+const sequelize = new Sequelize(process.env.DB_URL , { /* options */ });
 
 // Test the connection
 sequelize.authenticate()

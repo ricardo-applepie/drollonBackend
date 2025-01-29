@@ -1,12 +1,10 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { syncModels, Board, Group, Item, User } = require('./tables');
+const { sequelize, Board, Group, Item, User } = require('./tables');
 const app = express()
 const cors = require('cors'); // Import the cors middleware
-const { Sequelize } = require('sequelize');
 
-const sequelize = require('./sequelize'); 
 
 const port = 4000;
 
@@ -21,7 +19,6 @@ app.use(cors(corsOptions));
 // Middleware to parse JSON bodies
 app.use(express.json());
 
-syncModels();
 
 function verifyToken(req, res, next) {
   const token = req.header('Authorization');
@@ -189,27 +186,40 @@ app.post('/api/v1/groups', verifyToken, async (req, res) => {
 
 
 // Call the function to insert a user
+app.post('/api/v1/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-app.post('/api/v1/login',  async (req, res) => {
- try {
-   const { email, password } = req.body;
-   const user = await User.findOne({ where: { email: email } });
-   if (!user.dataValues.userId) {
-     return res.status(401).json({ error: 'Authentication failed' });
-   }
-   const passwordMatch = await bcrypt.compare(password, user.dataValues.password);
-   if (!passwordMatch) {
-     return res.status(401).json({ error: 'Authentication failed password' });
-   }
-   const token = jwt.sign({ userId: user.dataValues.userId }, 'hashed-code-12');
-   res.status(200).json({ token });
+    // Fetch user by email
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(401).json({ error: 'Authentication failed' });
+    }
 
-   } catch (error) {
-    //  res.status(200).json({ error: 'Login failed' });
-      res.status(200).json({error: "login details are wrong"})
+    // Verify password
+    const passwordMatch = await bcrypt.compare(password, user.dataValues.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Authentication failed: Incorrect password' });
+    }
 
-   }
- });
+    // Generate JWT token
+    const token = jwt.sign({ userId: user.dataValues.userId }, 'hashed-code-12');
+
+    // Set cookie with JWT
+    res.cookie('authToken', token, {
+      maxAge: 900000, // 15 minutes
+      httpOnly: true, // Prevent access by client-side JavaScript
+      secure: process.env.NODE_ENV === 'production', // Set true in production for HTTPS
+      sameSite: 'strict', // Strictly same-site requests
+    });
+
+    // Respond with success
+    res.status(200).json({ token });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred during login' });
+  }
+});
 
 
  
@@ -218,8 +228,8 @@ app.post('/api/v1/signup', (req, res) => {
   const saltRounds = 10;
     bcrypt.hash(password, saltRounds, async function(err, hash) {
         try {
-            const user = await User.create({firstName, lastName, username, password: hash, email, username });
-
+            const user = await User.create({firstName, lastName, username, password: hash, email });
+             console.log(user ,"öamsndpans")
              const createdUserID =  user.toJSON().userId;
             // await Account.create({
             //     balance: 0, // Random balance for example
@@ -228,7 +238,9 @@ app.post('/api/v1/signup', (req, res) => {
             // });
             res.json({user: user.id})
         } catch (error) {
-          res.json({error: error.errors[0].message})
+          const errorMessages = error.errors.map(err => err.message);
+
+          res.json({error: errorMessages})
         }    
    });
 
@@ -340,6 +352,8 @@ app.post('/api/v1/signup', (req, res) => {
 // });
 
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+sequelize.sync().then(req => {
+  app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`)
+  });
+});
